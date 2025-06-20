@@ -1,7 +1,7 @@
 import { Result, Ok, Err, NotFoundError, ValidationError } from '@/domain/shared/result';
 import { User } from '@/domain/user/user';
 import type { UserRepository } from '@/infrastructure/database/repositories/user-repository';
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 
 export interface AuthenticateUserRequest {
   email: string;
@@ -15,10 +15,18 @@ export interface AuthenticateUserResponse {
 }
 
 export class AuthenticateUserUseCase {
+  private readonly jwtSecret: Uint8Array;
+
   constructor(
     private userRepository: UserRepository,
-    private jwtSecret: string = process.env.JWT_SECRET || 'fallback-secret'
-  ) {}
+    jwtSecret?: string
+  ) {
+    const secret = jwtSecret || process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET is required');
+    }
+    this.jwtSecret = new TextEncoder().encode(secret);
+  }
 
   async execute(request: AuthenticateUserRequest): Promise<Result<AuthenticateUserResponse, NotFoundError | ValidationError | Error>> {
     // Find user by email
@@ -45,8 +53,8 @@ export class AuthenticateUserUseCase {
     await this.userRepository.save(user);
 
     // Generate tokens
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user);
+    const accessToken = await this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
 
     return Ok({
       user,
@@ -55,26 +63,26 @@ export class AuthenticateUserUseCase {
     });
   }
 
-  private generateAccessToken(user: User): string {
-    return jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      this.jwtSecret,
-      { expiresIn: '1h' }
-    );
+  private async generateAccessToken(user: User): Promise<string> {
+    return await new SignJWT({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(this.jwtSecret);
   }
 
-  private generateRefreshToken(user: User): string {
-    return jwt.sign(
-      {
-        userId: user.id,
-        type: 'refresh',
-      },
-      this.jwtSecret,
-      { expiresIn: '7d' }
-    );
+  private async generateRefreshToken(user: User): Promise<string> {
+    return await new SignJWT({
+      userId: user.id,
+      type: 'refresh',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(this.jwtSecret);
   }
 }

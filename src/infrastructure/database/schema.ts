@@ -58,7 +58,7 @@ export const ingredients = pgTable('ingredients', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 100 }).notNull(),
   category: ingredientCategoryEnum('category').notNull(),
-  pricePerUnit: decimal('price_per_unit', { precision: 10, scale: 2 }).notNull(),
+  pricePerUnitCents: integer('price_per_unit_cents').notNull(),
   currency: currencyEnum('currency').notNull().default('USD'),
   isAvailable: boolean('is_available').notNull().default(true),
   allergens: json('allergens').$type<string[]>(),
@@ -71,7 +71,7 @@ export const pizzaRecipes = pgTable('pizza_recipes', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 100 }).notNull(),
   description: text('description').notNull(),
-  basePrice: decimal('base_price', { precision: 10, scale: 2 }).notNull(),
+  basePriceCents: integer('base_price_cents').notNull(),
   currency: currencyEnum('currency').notNull().default('USD'),
   preparationTimeMinutes: integer('preparation_time_minutes').notNull(),
   difficulty: integer('difficulty').notNull(), // 1-5

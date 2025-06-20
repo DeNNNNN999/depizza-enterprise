@@ -123,6 +123,7 @@ function redirectToLogin(request: NextRequest): NextResponse {
 
 async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string } | null> {
   try {
+    const { SignJWT } = await import('jose');
     const { payload } = await jwtVerify(refreshToken, JWT_SECRET) as { payload: JWTPayload & { type: string } };
     
     if (payload.type !== 'refresh') {
@@ -130,7 +131,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
     }
 
     // Generate new access token
-    const newAccessToken = await new jose.SignJWT({
+    const newAccessToken = await new SignJWT({
       userId: payload.userId,
       email: payload.email,
       role: payload.role,

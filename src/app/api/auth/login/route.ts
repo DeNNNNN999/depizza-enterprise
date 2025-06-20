@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { AuthenticateUserUseCase } from '@/application/use-cases/auth/authenticate-user';
-import { DrizzleUserRepository } from '@/infrastructure/database/repositories/user-repository';
+import { DIContainer } from '@/infrastructure/di/container';
 
 const LoginRequestSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -23,8 +22,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userRepository = new DrizzleUserRepository();
-    const authenticateUseCase = new AuthenticateUserUseCase(userRepository);
+    const container = DIContainer.getInstance();
+    const authenticateUseCase = container.getAuthenticateUserUseCase();
 
     const result = await authenticateUseCase.execute(validationResult.data);
 

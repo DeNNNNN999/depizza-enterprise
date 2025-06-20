@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { RegisterUserUseCase } from '@/application/use-cases/auth/register-user';
-import { DrizzleUserRepository } from '@/infrastructure/database/repositories/user-repository';
+import { DIContainer } from '@/infrastructure/di/container';
 import { UserRoleSchema } from '@/domain/user/user';
 
 const RegisterRequestSchema = z.object({
@@ -28,8 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userRepository = new DrizzleUserRepository();
-    const registerUseCase = new RegisterUserUseCase(userRepository);
+    const container = DIContainer.getInstance();
+    const registerUseCase = container.getRegisterUserUseCase();
 
     const result = await registerUseCase.execute(validationResult.data);
 

@@ -4,6 +4,7 @@ import { users, type User as DBUser, type NewUser } from '../schema';
 import { User } from '@/domain/user/user';
 import { Result, Ok, Err, NotFoundError } from '@/domain/shared/result';
 import type { ID } from '@/domain/shared/types';
+import { DomainEventDispatcher } from '@/infrastructure/events/domain-event-dispatcher';
 
 export interface UserRepository {
   findById(id: ID): Promise<Result<User, NotFoundError>>;
@@ -13,6 +14,7 @@ export interface UserRepository {
 }
 
 export class DrizzleUserRepository implements UserRepository {
+  private eventDispatcher = DomainEventDispatcher.getInstance();
   async findById(id: ID): Promise<Result<User, NotFoundError>> {
     try {
       const [dbUser] = await db
@@ -70,6 +72,13 @@ export class DrizzleUserRepository implements UserRepository {
         })
         .returning();
 
+      // Dispatch domain events
+      const events = user.domainEvents;
+      user.clearEvents();
+      if (events.length > 0) {
+        await this.eventDispatcher.dispatch(events);
+      }
+
       return Ok(this.toDomain(savedUser));
     } catch (error) {
       return Err(error instanceof Error ? error : new Error('Failed to save user'));
@@ -91,21 +100,19 @@ export class DrizzleUserRepository implements UserRepository {
   }
 
   private toDomain(dbUser: DBUser): User {
-    // This is a simplified mapping - in real implementation,
-    // you would need to handle the password hash and other sensitive data properly
-    return Object.create(User.prototype, {
-      id: { value: dbUser.id },
-      email: { value: dbUser.email },
-      firstName: { value: dbUser.firstName },
-      lastName: { value: dbUser.lastName },
-      phone: { value: dbUser.phone },
-      role: { value: dbUser.role },
-      createdAt: { value: dbUser.createdAt },
-      updatedAt: { value: dbUser.updatedAt },
-      _status: { value: dbUser.status, writable: true },
-      _emailVerified: { value: dbUser.emailVerified, writable: true },
-      _lastLoginAt: { value: dbUser.lastLoginAt, writable: true },
-      _passwordHash: { value: dbUser.passwordHash, writable: true },
+    return User.reconstitute({
+      id: dbUser.id,
+      email: dbUser.email,
+      passwordHash: dbUser.passwordHash,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      phone: dbUser.phone,
+      role: dbUser.role,
+      status: dbUser.status,
+      emailVerified: dbUser.emailVerified,
+      lastLoginAt: dbUser.lastLoginAt || undefined,
+      createdAt: dbUser.createdAt,
+      updatedAt: dbUser.updatedAt,
     });
   }
 

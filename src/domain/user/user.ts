@@ -86,6 +86,43 @@ export class User extends BaseAggregateRoot {
     return Ok(user);
   }
 
+  // Factory method for reconstitution from persistence
+  static reconstitute(data: {
+    id: ID;
+    email: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    role: UserRole;
+    status: UserStatus;
+    emailVerified: boolean;
+    lastLoginAt?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  }): User {
+    const user = new User(
+      data.id,
+      data.email,
+      data.passwordHash,
+      data.firstName,
+      data.lastName,
+      data.phone,
+      data.role
+    );
+
+    // Reconstitute state without validation or events
+    user._status = data.status;
+    user._emailVerified = data.emailVerified;
+    user._lastLoginAt = data.lastLoginAt;
+    
+    // Set base entity properties
+    (user as any).createdAt = data.createdAt;
+    (user as any).updatedAt = data.updatedAt;
+
+    return user;
+  }
+
   get status(): UserStatus {
     return this._status;
   }
