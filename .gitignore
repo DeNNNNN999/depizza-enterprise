@@ -125,3 +125,6 @@ next-env.d.ts
 
 # Turbo
 .turbo
+
+*storybook.log
+storybook-static
